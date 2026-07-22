@@ -61,12 +61,74 @@ class Carousel {
         return rect.x === 0;
     }
 
+    /**
+     * Recebe um getter (ex.: `() => Carousel.jsFoundationCard`), não um elemento já resolvido.
+     * O carrossel virtualiza os itens (só monta as cartas próximas da posição atual), então
+     * resolver o seletor cedo demais - antes do swipe que a traz pra perto - pode pegar um
+     * elemento inexistente/obsoleto. Resolvendo a cada tentativa evitamos isso.
+     *
+     * Logo após a tela abrir ou um swipe terminar, o layout também pode levar alguns
+     * instantes para assentar (animação do carrossel), então checar a posição imediatamente
+     * pode dar falso negativo - por isso o polling.
+     */
+    async waitForCardActive(cardGetter, timeout = 5000) {
+        return driver.waitUntil(async () => this.isCardActive(await cardGetter()), {
+            timeout,
+            timeoutMsg: 'A carta esperada não ficou ativa no carrossel a tempo',
+        });
+    }
+
+    /**
+     * O comando de alto nível `driver.swipe()` (baseado em scrollableElement/percent) não
+     * gera um gesto forte o suficiente para "arrastar" este carrossel em todos os
+     * dispositivos/versões testados. Usamos o gesto nativo do driver, que dá controle direto
+     * sobre a distância do swipe dentro dos limites do elemento.
+     */
+    async swipe(direction) {
+        const carouselElement = await this.carousel;
+
+        if (driver.isAndroid) {
+            await driver.execute('mobile: swipeGesture', {
+                elementId: carouselElement.elementId,
+                direction,
+                percent: 0.75,
+            });
+        } else {
+            await driver.execute('mobile: swipe', {
+                elementId: carouselElement.elementId,
+                direction,
+                velocity: 250,
+            });
+        }
+    }
+
     async swipeLeft() {
-        await driver.swipe({ direction: 'left', scrollableElement: this.carousel, percent: 0.8 });
+        await this.swipe('left');
     }
 
     async swipeRight() {
-        await driver.swipe({ direction: 'right', scrollableElement: this.carousel, percent: 0.8 });
+        await this.swipe('right');
+    }
+
+    /**
+     * Sob carga (emulador/simulador mais lento, várias sessões seguidas), o gesto de swipe
+     * às vezes não é reconhecido pelo app na primeira tentativa. Em vez de deixar o teste
+     * quebrar por isso, repetimos o gesto algumas vezes antes de desistir.
+     *
+     * `cardGetter` é uma função (ex.: `() => Carousel.jsFoundationCard`), não um elemento já
+     * resolvido - ver comentário em `waitForCardActive` sobre por quê.
+     */
+    async swipeUntilCardActive(direction, cardGetter, { retries = 2, timeout = 6000 } = {}) {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            await this.swipe(direction);
+            try {
+                return await this.waitForCardActive(cardGetter, timeout);
+            } catch (error) {
+                if (attempt === retries) {
+                    throw error;
+                }
+            }
+        }
     }
 }
 

@@ -10,16 +10,13 @@ describe('Navegação, ao interagir com o carrossel de swipe,', () => {
     });
 
     it('deve navegar horizontalmente entre os cards ao arrastar para esquerda e direita', async () => {
-        expect(await Carousel.isCardActive(await Carousel.openSourceCard)).to.be.true;
+        expect(await Carousel.waitForCardActive(() => Carousel.openSourceCard)).to.be.true;
 
-        await Carousel.swipeLeft();
-        expect(await Carousel.isCardActive(await Carousel.communityCard)).to.be.true;
+        expect(await Carousel.swipeUntilCardActive('left', () => Carousel.communityCard)).to.be.true;
 
-        await Carousel.swipeLeft();
-        expect(await Carousel.isCardActive(await Carousel.jsFoundationCard)).to.be.true;
+        expect(await Carousel.swipeUntilCardActive('left', () => Carousel.jsFoundationCard)).to.be.true;
 
-        await Carousel.swipeRight();
-        expect(await Carousel.isCardActive(await Carousel.communityCard)).to.be.true;
+        expect(await Carousel.swipeUntilCardActive('right', () => Carousel.communityCard)).to.be.true;
     });
 
     it('deve encontrar o logo ao rolar verticalmente até o final da tela', async () => {

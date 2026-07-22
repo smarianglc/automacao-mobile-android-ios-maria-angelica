@@ -94,14 +94,22 @@ variáveis de ambiente `ANDROID_APP_PATH` / `IOS_APP_PATH` com o caminho complet
 
 ### Android
 
-1. Crie um AVD no Android Studio (ex.: `Pixel_7_API_34`, Android 14).
-2. Inicie o emulador (ou deixe o Appium iniciá-lo, se configurado).
+1. Crie um AVD no Android Studio (ex.: `Pixel_7_API_34`, Android 14) e garanta que
+   `ANDROID_HOME`/`ANDROID_SDK_ROOT` estejam exportados no seu shell (aponte para a pasta do SDK,
+   normalmente `~/Library/Android/sdk` no macOS).
+2. Inicie o emulador (ou deixe o Appium iniciá-lo, se configurado):
+   ```bash
+   emulator -avd NOME_DO_SEU_AVD &
+   adb wait-for-device
+   ```
 3. Rode:
    ```bash
    npm run test:android
    ```
-   Para usar outro device/versão, exporte `ANDROID_DEVICE_NAME` e `ANDROID_PLATFORM_VERSION`
-   antes de rodar o comando.
+   Se o seu AVD não for exatamente `Pixel_7_API_34` com Android 14, exporte antes
+   `ANDROID_DEVICE_NAME` (nome do AVD) e `ANDROID_PLATFORM_VERSION` (versão que aparece com
+   `adb shell getprop ro.build.version.release`) — caso contrário o Appium recusa a sessão com
+   `Unable to find an active device or emulator with OS X.X`.
 
 ### iOS (necessário macOS + Xcode)
 
