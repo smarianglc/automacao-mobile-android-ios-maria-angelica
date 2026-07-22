@@ -7,8 +7,8 @@ exports.config = {
     ...sharedConfig,
 
     specs: ['../../test/specs/**/*.spec.js'],
-    // O teste de webview depende de troca de contexto validada apenas para Android nesta suíte
-    exclude: ['../../test/specs/**/*.webview.spec.js'],
+    // Não é necessário excluir o cenário de webview aqui: o próprio spec
+    // (01.navigation.tabbar.spec.js) só registra aquele teste quando `driver.isAndroid`.
 
     user: process.env.BROWSERSTACK_USER,
     key: process.env.BROWSERSTACK_ACCESS_KEY,

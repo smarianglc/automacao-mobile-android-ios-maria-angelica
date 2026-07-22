@@ -184,15 +184,23 @@ jobs:
 
       - name: Consolidar resultados
         run: |
-          mkdir -p allure-results
-          find allure-results-raw -mindepth 2 -maxdepth 2 -type d -name allure-results -exec sh -c 'cp -r "$1"/. allure-results/' _ {} \;
+          mkdir -p allure-results-raw allure-results
+          find allure-results-raw -mindepth 2 -maxdepth 2 -type d -name allure-results \
+            -exec sh -c 'cp -r "$1"/. allure-results/' _ {} \; 2>/dev/null || true
 
       - name: Gerar Allure Report
-        run: npm run report:generate
+        run: |
+          if [ -z "$(ls -A allure-results 2>/dev/null)" ]; then
+            echo "Nenhum job de teste rodou (ou nenhum gerou resultados) nesta execução. Pulando geração do relatório."
+            exit 0
+          fi
+          npm run report:generate
 
       - name: Publicar relatório
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report/
           retention-days: 30
+          if-no-files-found: ignore

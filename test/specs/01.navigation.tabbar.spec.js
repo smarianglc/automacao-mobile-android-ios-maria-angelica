@@ -40,13 +40,18 @@ describe('Navegação entre telas, ao usar a barra de navegação inferior,', ()
         expect(await DragPage.screen.isDisplayed()).to.be.true;
     });
 
-    it('deve navegar para a Webview e voltar para a tela Home', async () => {
-        await TabBar.openWebView();
-        await WebviewPage.waitForWebsiteLoaded();
+    // A detecção do contexto de webview para este app (Expo/React Native) tem uma limitação
+    // conhecida no iOS (ver issues do WebdriverIO/Appium para o native-demo-app), por isso este
+    // cenário roda apenas no Android, assim como no appium-boilerplate oficial.
+    if (driver.isAndroid) {
+        it('deve navegar para a Webview e voltar para a tela Home', async () => {
+            await TabBar.openWebView();
+            await WebviewPage.waitForWebsiteLoaded();
 
-        await TabBar.openHome();
-        await HomePage.waitForIsShown(true);
+            await TabBar.openHome();
+            await HomePage.waitForIsShown(true);
 
-        expect(await HomePage.screen.isDisplayed()).to.be.true;
-    });
+            expect(await HomePage.screen.isDisplayed()).to.be.true;
+        });
+    }
 });
