@@ -1,0 +1,198 @@
+name: Mobile Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Roda automaticamente em todo push/PR. Usa dispositivos Android reais na nuvem
+  # do BrowserStack, então não depende de emulador nem de runner especial.
+  test-browserstack-android:
+    runs-on: ubuntu-latest
+    if: ${{ vars.BROWSERSTACK_APP_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rodar testes no BrowserStack (Android)
+        env:
+          BROWSERSTACK_USER: ${{ secrets.BROWSERSTACK_USER }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          BROWSERSTACK_APP_ID: ${{ vars.BROWSERSTACK_APP_ID }}
+        run: npm run test:android:bstack
+
+      - name: Publicar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-browserstack-android
+          path: |
+            allure-results/
+            screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  test-browserstack-ios:
+    runs-on: ubuntu-latest
+    if: ${{ vars.BROWSERSTACK_IOS_APP_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rodar testes no BrowserStack (iOS)
+        env:
+          BROWSERSTACK_USER: ${{ secrets.BROWSERSTACK_USER }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          BROWSERSTACK_IOS_APP_ID: ${{ vars.BROWSERSTACK_IOS_APP_ID }}
+        run: npm run test:ios:bstack
+
+      - name: Publicar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-browserstack-ios
+          path: |
+            allure-results/
+            screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Disparado manualmente (Actions > Mobile Tests > Run workflow): sobe um emulador
+  # Android de verdade no runner Linux (via KVM) e instala o .apk baixado da release
+  # do native-demo-app.
+  test-android-emulator:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx appium driver install uiautomator2
+
+      - name: Baixar o apk da release mais recente do native-demo-app
+        run: |
+          mkdir -p apps
+          curl -sL -o apps/android.apk \
+            "$(curl -sL https://api.github.com/repos/webdriverio/native-demo-app/releases/latest \
+              | grep 'browser_download_url.*\.apk' | head -n1 | cut -d '"' -f4)"
+
+      - name: Rodar testes no emulador Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          script: npm run test:android
+
+      - name: Publicar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-android-emulator
+          path: |
+            allure-results/
+            screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Disparado manualmente: usa o simulador de iOS já pré-instalado no runner macOS.
+  test-ios-simulator:
+    runs-on: macos-14
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx appium driver install xcuitest
+
+      - name: Baixar o build de simulador da release mais recente do native-demo-app
+        run: |
+          mkdir -p apps
+          curl -sL -o apps/ios-simulator.zip \
+            "$(curl -sL https://api.github.com/repos/webdriverio/native-demo-app/releases/latest \
+              | grep 'browser_download_url.*simulator.*\.zip' | head -n1 | cut -d '"' -f4)"
+
+      - name: Rodar testes no simulador iOS
+        run: npm run test:ios
+
+      - name: Publicar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-ios-simulator
+          path: |
+            allure-results/
+            screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Junta os resultados de qualquer job de teste que tenha rodado e gera o Allure Report.
+  report:
+    runs-on: ubuntu-latest
+    needs:
+      - test-browserstack-android
+      - test-browserstack-ios
+      - test-android-emulator
+      - test-ios-simulator
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Baixar todas as evidências
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-results-raw
+          merge-multiple: false
+
+      - name: Consolidar resultados
+        run: |
+          mkdir -p allure-results
+          find allure-results-raw -mindepth 2 -maxdepth 2 -type d -name allure-results -exec sh -c 'cp -r "$1"/. allure-results/' _ {} \;
+
+      - name: Gerar Allure Report
+        run: npm run report:generate
+
+      - name: Publicar relatório
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30

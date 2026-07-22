@@ -1,0 +1,12 @@
+{
+    "invalidEmails": [
+        { "email": "plainaddress", "password": "Test1234!" },
+        { "email": "usuario@", "password": "Test1234!" },
+        { "email": "usuario@dominio", "password": "Test1234!" }
+    ],
+    "shortPasswords": [
+        { "email": "test@webdriver.io", "password": "123" },
+        { "email": "test@webdriver.io", "password": "abcde" },
+        { "email": "test@webdriver.io", "password": "1234567" }
+    ]
+}

@@ -1,0 +1,19 @@
+node_modules/
+npm-debug.log*
+
+# Apps binários (baixe conforme o README, não versionar binários pesados)
+apps/*.apk
+apps/*.ipa
+apps/*.zip
+apps/*.app
+
+# Evidências e relatórios gerados pela execução dos testes
+allure-results/
+allure-report/
+screenshots/
+logs/
+
+# Diversos
+.DS_Store
+*.log
+.env
