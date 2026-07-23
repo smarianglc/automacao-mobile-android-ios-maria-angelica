@@ -12,6 +12,12 @@ exports.config = {
     runner: 'local',
     port: 4723,
 
+    // O primeiro boot de um simulador (antes de qualquer app rodar nele) pode passar
+    // fácil de 2 minutos - o padrão do wdio.shared.conf.js é curto demais pra isso e
+    // derrubava a criação da sessão por timeout do lado do cliente antes do Appium
+    // conseguir terminar de bootar o simulador.
+    connectionRetryTimeout: 300000,
+
     specs: ['../test/specs/**/*.spec.js'],
 
     services: [
@@ -37,6 +43,9 @@ exports.config = {
             'appium:automationName': 'XCUITest',
             'appium:app': IOS_APP_PATH,
             'appium:newCommandTimeout': 240,
+            // Dá mais margem para o primeiro boot do simulador (o padrão do Appium, 120s,
+            // não é suficiente na primeira vez que um simulador novo é usado na máquina)
+            'appium:simulatorStartupTimeout': 300000,
             // Necessário para a detecção do contexto de webview no cenário de webview
             'appium:webviewConnectTimeout': 20 * 1000,
             'appium:additionalWebviewBundleIds': ['*'],
