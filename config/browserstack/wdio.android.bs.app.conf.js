@@ -17,6 +17,9 @@ exports.config = {
     capabilities: [
         {
             platformName: 'Android',
+            // A maioria dos planos trial/gratuitos do BrowserStack só libera 1 sessão em
+            // paralelo. Ajuste via BROWSERSTACK_MAX_INSTANCES se o seu plano permitir mais.
+            'wdio:maxInstances': Number(process.env.BROWSERSTACK_MAX_INSTANCES) || 1,
             'appium:app': process.env.BROWSERSTACK_APP_ID,
             'appium:automationName': 'UiAutomator2',
             'bstack:options': {
